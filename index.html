@@ -229,7 +229,6 @@
                 document.getElementById("eventManagerSection").classList.remove("logged-in");
 
                 alert(`Willkommen zurück, ${username}!`);
-                loadDemoData();
                 displayEvents();
             } else {
                 document.getElementById("loginError").innerText = "Falsche Anmeldedaten!";
@@ -293,6 +292,22 @@
             const othersEventList = document.getElementById("othersEventList");
             othersEventList.innerHTML = ""; // Liste zurücksetzen
 
+            // Demo-Aktivitäten von anderen
+            othersEvents = [
+                {
+                    id: 1,
+                    title: "Wandertour im Wald",
+                    description: "Eine gemütliche Wandertour durch den Wald mit Freunden.",
+                    createdAt: new Date().toLocaleString()
+                },
+                {
+                    id: 2,
+                    title: "Stadtbesichtigung",
+                    description: "Eine geführte Tour durch die historische Altstadt.",
+                    createdAt: new Date().toLocaleString()
+                }
+            ];
+
             othersEvents.forEach(event => {
                 const eventItem = document.createElement("li");
                 eventItem.classList.add("event-item");
@@ -326,25 +341,6 @@
         function clearForm() {
             document.getElementById("eventTitle").value = "";
             document.getElementById("eventDescription").value = "";
-        }
-
-        // Demo-Daten für Aktivitäten anderer
-        function loadDemoData() {
-            othersEvents = [
-                {
-                    id: 1,
-                    title: "Wandertour im Wald",
-                    description: "Eine gemütliche Wandertour durch den Wald mit Freunden.",
-                    createdAt: new Date().toLocaleString()
-                },
-                {
-                    id: 2,
-                    title: "Stadtbesichtigung",
-                    description: "Eine geführte Tour durch die historische Altstadt.",
-                    createdAt: new Date().toLocaleString()
-                }
-            ];
-            displayOthersEvents();
         }
 
         // Beim Laden der Seite prüfen, ob der Benutzer eingeloggt ist
