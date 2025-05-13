@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Manager mit Anmeldung und Registrierung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .column {
+            width: 45%;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .event-form input, .event-form textarea, .login-form input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .event-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .event-item {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .event-item h3 {
+            margin: 0;
+            color: #4CAF50;
+        }
+
+        .event-item p {
+            color: #555;
+        }
+
+        .error {
+            color: red;
+            font-size: 14px;
+        }
+
+        .btn-delete, .btn-join, .btn-login {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .btn-delete:hover, .btn-join:hover, .btn-login:hover {
+            background-color: darkgreen;
+        }
+
+        .btn-delete {
+            background-color: red;
+        }
+
+        .btn-delete:hover {
+            background-color: darkred;
+        }
+
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .logged-in {
+            display: none;
+        }
+
+        .logged-out {
+            display: block;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Event Manager</h1>
+
+    <!-- Registrierung Bereich (wenn der Benutzer noch nicht registriert ist) -->
+    <div id="registerSection" class="login-form logged-out">
+        <h2>Registrieren</h2>
+        <input type="email" id="registerEmail" placeholder="E-Mail-Adresse" required>
+        <input type="text" id="registerUsername" placeholder="Benutzername" required>
+        <input type="password" id="registerPassword" placeholder="Passwort" required>
+        <input type="password" id="registerConfirmPassword" placeholder="Passwort bestätigen" required>
+        <button class="btn-login" onclick="register()">Registrieren</button>
+        <div id="registerError" class="error"></div>
+    </div>
+
+    <!-- Anmeldebereich -->
+    <div id="loginSection" class="login-form logged-out">
+        <h2>Bitte anmelden</h2>
+        <input type="email" id="loginEmail" placeholder="E-Mail-Adresse" required>
+        <input type="text" id="loginUsername" placeholder="Benutzername" required>
+        <input type="password" id="loginPassword" placeholder="Passwort" required>
+        <button class="btn-login" onclick="login()">Anmelden</button>
+        <div id="loginError" class="error"></div>
+    </div>
+
+    <!-- Event-Manager Bereich (nur sichtbar, wenn der Benutzer eingeloggt ist) -->
+    <div id="eventManagerSection" class="logged-in">
+        <div class="container">
+            <div class="column" id="myEventsColumn">
+                <h2>Meine Aktivitäten</h2>
+                <div class="event-form">
+                    <input type="text" id="eventTitle" placeholder="Event Titel">
+                    <textarea id="eventDescription" placeholder="Event Beschreibung"></textarea>
+                    <button onclick="addEvent()">Event hinzufügen</button>
+                </div>
+                <ul class="event-list" id="myEventList"></ul>
+            </div>
+
+            <div class="column" id="othersEventsColumn">
+                <h2>Aktivitäten von anderen</h2>
+                <ul class="event-list" id="othersEventList"></ul>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error"></div>
+    </div>
+
+    <script>
+        // Arrays für die Events
+        let myEvents = [];
+        let othersEvents = [];
+
+        // Benutzerinformationen
+        let currentUser = null;
+
+        // Funktion zur Registrierung
+        function register() {
+            const email = document.getElementById("registerEmail").value;
+            const username = document.getElementById("registerUsername").value;
+            const password = document.getElementById("registerPassword").value;
+            const confirmPassword = document.getElementById("registerConfirmPassword").value;
+
+            // Eingaben validieren
+            if (email === "" || username === "" || password === "" || confirmPassword === "") {
+                document.getElementById("registerError").innerText = "Bitte füllen Sie alle Felder aus!";
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                document.getElementById("registerError").innerText = "Die Passwörter stimmen nicht überein!";
+                return;
+            }
+
+            // E-Mail-Adresse validieren
+            const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+            if (!emailRegex.test(email)) {
+                document.getElementById("registerError").innerText = "Bitte geben Sie eine gültige E-Mail-Adresse ein!";
+                return;
+            }
+
+            // Überprüfen, ob die E-Mail bereits registriert ist
+            const existingUser = JSON.parse(localStorage.getItem("userData"));
+            if (existingUser && existingUser.email === email) {
+                document.getElementById("registerError").innerText = "Diese E-Mail-Adresse ist bereits registriert!";
+                return;
+            }
+
+            // Benutzer im LocalStorage speichern
+            const user = { email, username, password };
+            localStorage.setItem("userData", JSON.stringify(user));
+
+            // Benutzerstatus ändern
+            currentUser = user;
+            document.getElementById("registerSection").classList.add("logged-out");
+            document.getElementById("loginSection").classList.remove("logged-out");
+
+            alert("Registrierung erfolgreich! Bitte melden Sie sich an.");
+        }
+
+        // Funktion zum Anmelden
+        function login() {
+            const email = document.getElementById("loginEmail").value;
+            const username = document.getElementById("loginUsername").value;
+            const password = document.getElementById("loginPassword").value;
+
+            // Eingaben validieren
+            if (email === "" || username === "" || password === "") {
+                document.getElementById("loginError").innerText = "Bitte füllen Sie alle Felder aus!";
+                return;
+            }
+
+            // Überprüfen, ob der Benutzer existiert
+            const storedUserData = JSON.parse(localStorage.getItem("userData"));
+            if (!storedUserData) {
+                document.getElementById("loginError").innerText = "Benutzer nicht registriert!";
+                return;
+            }
+
+            // E-Mail und Passwort überprüfen
+            if (storedUserData.email === email && storedUserData.username === username && storedUserData.password === password) {
+                // Erfolgreiche Anmeldung
+                currentUser = storedUserData;
+                document.getElementById("loginSection").classList.add("logged-out");
+                document.getElementById("eventManagerSection").classList.remove("logged-in");
+
+                alert(`Willkommen zurück, ${username}!`);
+                loadDemoData();
+                displayEvents();
+            } else {
+                document.getElementById("loginError").innerText = "Falsche Anmeldedaten!";
+            }
+        }
+
+        // Funktion, um ein Event hinzuzufügen (deine Events)
+        function addEvent() {
+            const title = document.getElementById("eventTitle").value;
+            const description = document.getElementById("eventDescription").value;
+
+            // Überprüfung, ob beide Felder ausgefüllt sind
+            if (title === "" || description === "") {
+                document.getElementById("errorMessage").innerText = "Bitte füllen Sie beide Felder aus!";
+                return;
+            } else {
+                document.getElementById("errorMessage").innerText = "";
+            }
+
+            // Event in das eigene Array speichern
+            const newEvent = {
+                id: myEvents.length + 1,
+                title: title,
+                description: description,
+                createdAt: new Date().toLocaleString()
+            };
+
+            myEvents.push(newEvent);
+            displayEvents();
+            clearForm();
+        }
+
+        // Funktion, um alle Events anzuzeigen (sowohl eigene als auch fremde)
+        function displayEvents() {
+            displayMyEvents();
+            displayOthersEvents();
+        }
+
+        // Eigene Events anzeigen
+        function displayMyEvents() {
+            const myEventList = document.getElementById("myEventList");
+            myEventList.innerHTML = ""; // Liste zurücksetzen
+
+            myEvents.forEach(event => {
+                const eventItem = document.createElement("li");
+                eventItem.classList.add("event-item");
+
+                eventItem.innerHTML = `
+                    <h3>${event.title}</h3>
+                    <p>${event.description}</p>
+                    <small>Erstellt am: ${event.createdAt}</small>
+                    <button class="btn-delete" onclick="deleteEvent(${event.id}, 'myEvents')">Löschen</button>
+                `;
+
+                myEventList.appendChild(eventItem);
+            });
+        }
+
+        // Aktivitäten anderer anzeigen
+        function displayOthersEvents() {
+            const othersEventList = document.getElementById("othersEventList");
+            othersEventList.innerHTML = ""; // Liste zurücksetzen
+
+            othersEvents.forEach(event => {
+                const eventItem = document.createElement("li");
+                eventItem.classList.add("event-item");
+
+                eventItem.innerHTML = `
+                    <h3>${event.title}</h3>
+                    <p>${event.description}</p>
+                    <small>Erstellt am: ${event.createdAt}</small>
+                    <button class="btn-join" onclick="joinEvent(${event.id})">Teilnehmen</button>
+                `;
+
+                othersEventList.appendChild(eventItem);
+            });
+        }
+
+        // Event löschen (eigene Events)
+        function deleteEvent(id, eventType) {
+            if (eventType === 'myEvents') {
+                myEvents = myEvents.filter(event => event.id !== id);
+                displayMyEvents();
+            }
+        }
+
+        // Event beitreten (Aktivität anderer)
+        function joinEvent(id) {
+            const event = othersEvents.find(event => event.id === id);
+            alert(`Du hast an '${event.title}' teilgenommen!`);
+        }
+
+        // Formular zurücksetzen
+        function clearForm() {
+            document.getElementById("eventTitle").value = "";
+            document.getElementById("eventDescription").value = "";
+        }
+
+        // Demo-Daten für Aktivitäten anderer
+        function loadDemoData() {
+            othersEvents = [
+                {
+                    id: 1,
+                    title: "Wandertour im Wald",
+                    description: "Eine gemütliche Wandertour durch den Wald mit Freunden.",
+                    createdAt: new Date().toLocaleString()
+                },
+                {
+                    id: 2,
+                    title: "Stadtbesichtigung",
+                    description: "Eine geführte Tour durch die historische Altstadt.",
+                    createdAt: new Date().toLocaleString()
+                }
+            ];
+            displayOthersEvents();
+        }
+
+        // Beim Laden der Seite prüfen, ob der Benutzer eingeloggt ist
+        window.onload = function() {
+            const storedUser = localStorage.getItem("userData");
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                document.getElementById("loginSection").classList.add("logged-out");
+                document.getElementById("eventManagerSection").classList.remove("logged-in");
+                displayEvents();
+            } else {
+                document.getElementById("loginSection").classList.remove("logged-out");
+            }
+        }
+    </script>
+
+</body>
+</html>
